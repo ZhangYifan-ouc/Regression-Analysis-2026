@@ -12,10 +12,13 @@ class AnalyticalOLS:
         self.coef_ = None
 
     def fit(self, X: np.ndarray, y: np.ndarray):
-        """Fit the model using normal equation: beta = (X'X)^{-1}X'y"""
+        """Fit the model using normal equation: beta = (X'X)^{-1}X'y
+    
+        Uses lstsq (not solve) to gracefully handle near-singular matrices.
+        """
         X = np.asarray(X, dtype=np.float64)
-        y = np.asarray(y, dtype=np.float64).reshape(-1, 1)
-        self.coef_ = np.linalg.solve(X.T @ X, X.T @ y).flatten()
+        y = np.asarray(y, dtype=np.float64).reshape(-1)
+        self.coef_, residuals, rank, s = np.linalg.lstsq(X, y, rcond=None)
         return self
 
     def predict(self, X: np.ndarray) -> np.ndarray:
@@ -30,6 +33,8 @@ class AnalyticalOLS:
         y_pred = self.predict(X)
         sse = np.sum((y - y_pred) ** 2)
         sst = np.sum((y - np.mean(y)) ** 2)
+        if sst == 0:
+            return 1.0 if sse == 0 else 0.0
         return 1 - sse / sst
 
 
@@ -111,4 +116,6 @@ class GradientDescentOLS:
         y_pred = self.predict(X)
         sse = np.sum((y - y_pred) ** 2)
         sst = np.sum((y - np.mean(y)) ** 2)
+        if sst == 0:
+            return 1.0 if sse == 0 else 0.0
         return 1 - sse / sst

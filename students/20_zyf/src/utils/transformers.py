@@ -5,6 +5,83 @@ Purpose: Data transformation classes following sklearn-style API.
 import numpy as np
 
 
+class CustomImputer:
+    """
+    Missing value imputation transformer.
+    
+    Supports mean and median imputation strategies.
+    Follows sklearn Transformer interface:
+    - fit(X): Learn imputation values from data
+    - transform(X): Apply learned imputation
+    - fit_transform(X): Learn and apply in one step
+    """
+    
+    def __init__(self, strategy: str = "mean"):
+        """
+        Parameters:
+        -----------
+        strategy : str
+            Imputation strategy: 'mean' or 'median'
+        """
+        if strategy not in ("mean", "median"):
+            raise ValueError("strategy must be 'mean' or 'median'")
+        self.strategy = strategy
+        self.fill_values_ = None
+        self.is_fitted_ = False
+    
+    def fit(self, X: np.ndarray):
+        """
+        Learn fill values from the data.
+        
+        Parameters:
+        -----------
+        X : np.ndarray of shape (n_samples, n_features)
+        
+        Returns:
+        --------
+        self
+        """
+        X = np.asarray(X, dtype=np.float64)
+        
+        if self.strategy == "mean":
+            self.fill_values_ = np.nanmean(X, axis=0)
+        else:  # median
+            self.fill_values_ = np.nanmedian(X, axis=0)
+        
+        self.is_fitted_ = True
+        return self
+    
+    def transform(self, X: np.ndarray) -> np.ndarray:
+        """
+        Fill missing values using learned fill values.
+        
+        Parameters:
+        -----------
+        X : np.ndarray of shape (n_samples, n_features)
+        
+        Returns:
+        --------
+        X_filled : np.ndarray
+        """
+        if not self.is_fitted_:
+            raise ValueError("Imputer must be fitted before transform. Call fit() first.")
+        
+        X = np.asarray(X, dtype=np.float64)
+        X_filled = X.copy()
+        
+        for j in range(X_filled.shape[1]):
+            mask = np.isnan(X_filled[:, j])
+            if np.any(mask):
+                X_filled[mask, j] = self.fill_values_[j]
+        
+        return X_filled
+    
+    def fit_transform(self, X: np.ndarray) -> np.ndarray:
+        """Learn parameters and apply imputation in one step."""
+        self.fit(X)
+        return self.transform(X)
+
+
 class CustomStandardScaler:
     """
     Standardization transformer using z-score normalization.
