@@ -13,7 +13,7 @@ __pycache__/
 # 临时文件
 *.log
 *.tmp
-
+*.csv
 # 操作系统生成文件
 .DS_Store
 Thumbs.db

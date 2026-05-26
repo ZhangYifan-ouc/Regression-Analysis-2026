@@ -182,3 +182,76 @@ class GradientDescentOLS:
         SSE = np.sum((y - y_pred) ** 2)
         SST = np.sum((y - np.mean(y)) ** 2)
         return 1 - SSE / SST
+
+# =============================================================================
+#Ridge 岭回归 
+# 作用：解决多重共线性 → 矩阵永不奇异 → 不删特征 → 不报错
+# =============================================================================
+class RidgeRegression:
+    """
+    手写 Ridge 岭回归（解析解）
+    解决：共线性导致 XtX 奇异、无法求逆的问题
+    核心：在 XtX 上加入 alpha * 单位矩阵，保证可逆
+    """
+
+    def __init__(self, alpha: float = 1.0, fit_intercept: bool = True):
+        """
+        :param alpha: 正则化强度（越大越强）
+        :param fit_intercept: 是否拟合截距
+        """
+        self.alpha = alpha
+        self.fit_intercept = fit_intercept
+        self.coef_ = None       # 系数
+        self.intercept_ = None   # 截距
+
+    def _add_intercept(self, X: np.ndarray) -> np.ndarray:
+        """和 OLS 保持一致：给 X 加一列 1"""
+        if not self.fit_intercept:
+            return X
+        n_samples = X.shape[0]
+        return np.hstack([np.ones((n_samples, 1)), X])
+
+    def fit(self, X: np.ndarray, y: np.ndarray):
+        """
+        拟合 Ridge 模型
+        β = (XᵀX + αI)⁻¹ Xᵀy
+        """
+        # 1. 给 X 加截距（如果需要）
+        X_design = self._add_intercept(X)
+        n_samples, n_features = X_design.shape
+
+        # 2. 计算 XᵀX
+        XtX = X_design.T @ X_design
+
+        # 3. 核心：Ridge 正则项 → 加 alpha * 单位矩阵
+        # 这一步让矩阵永远可逆，解决共线性报错！
+        identity_matrix = np.eye(n_features)
+        XtX_regularized = XtX + self.alpha * identity_matrix
+
+        # 4. 求逆 + 计算系数
+        XtX_inv = np.linalg.inv(XtX_regularized)
+        XtY = X_design.T @ y
+        beta = XtX_inv @ XtY
+
+        # 5. 拆分截距和系数
+        if self.fit_intercept:
+            self.intercept_ = beta[0]
+            self.coef_ = beta[1:]
+        else:
+            self.intercept_ = 0.0
+            self.coef_ = beta
+
+        return self
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        """预测"""
+        if self.coef_ is None:
+            raise RuntimeError("请先调用 fit()")
+        return X @ self.coef_ + self.intercept_
+
+    def score(self, X: np.ndarray, y: np.ndarray) -> float:
+        """计算 R²"""
+        y_pred = self.predict(X)
+        ss_res = np.sum((y - y_pred) ** 2)
+        ss_tot = np.sum((y - np.mean(y)) ** 2)
+        return 1 - (ss_res / ss_tot)

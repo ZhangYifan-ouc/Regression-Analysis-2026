@@ -43,3 +43,17 @@ def calculate_mape(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     y_pred_safe = y_pred[mask]
 
     return np.mean(np.abs((y_true_safe - y_pred_safe) / y_true_safe)) * 100
+
+
+def calculate_r2(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    """计算 R² 决定系数（拟合优度）。
+
+    R² = 1 - SSE/SST
+      SSE = Σ(y_true - y_pred)²  （残差平方和）
+      SST = Σ(y_true - mean(y_true))²  （总平方和）
+
+    R² 越接近 1 表示模型拟合越好，R² = 0 表示模型等同于预测均值。
+    """
+    ss_res = np.sum((y_true - y_pred) ** 2)
+    ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
+    return 1 - ss_res / ss_tot if ss_tot > 0 else 0

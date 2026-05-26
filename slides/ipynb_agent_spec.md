@@ -130,7 +130,21 @@ Purpose:
 Typical format:
 - markdown cell
 
-### 5. `checkpoint`
+### 5. `takeaway`
+Purpose:
+- elevate from "what we just saw" to "what this means"
+- transform a phenomenon into a transferable judgment
+- give students a sentence they can reuse for decision-making
+
+This cell is the single most important cognitive leap in each scene.
+Without it, the notebook stops at naming and never reaches judgment.
+
+Typical format:
+- markdown cell
+
+Key distinction: `explain` names the phenomenon; `takeaway` tells you why it matters.
+
+### 6. `checkpoint`
 Purpose:
 - force students to make a judgment
 - insert a pause for discussion or mini reflection
@@ -138,7 +152,19 @@ Purpose:
 Typical format:
 - markdown cell
 
-### 6. `script`
+### 7. `interlude`
+Purpose:
+- recap and synthesize across multiple preceding scenes
+- create a deliberate cognitive anchor before the next major section
+- help students see the connections between scenes they just experienced
+
+An interlude should not introduce new code or new experiments.
+It should collect, compress, and reframe.
+
+Typical format:
+- markdown cell
+
+### 8. `script`
 Purpose:
 - teacher-only speaking notes
 - reminders about pacing, likely confusion points, or follow-up prompts
@@ -148,7 +174,7 @@ Typical format:
 - should include tag `teacher-only`
 - should preferably be hidden/collapsible in the frontend
 
-### 7. `backup`
+### 9. `backup`
 Purpose:
 - optional extensions
 - extra experiments
@@ -165,25 +191,34 @@ Minimum tag set:
 - `cue`
 - `stage`
 - `explain`
+- `takeaway`
 - `checkpoint`
+- `interlude`
 - `script`
 - `teacher-only`
 - `backup`
 
 Examples:
 - markdown prompt cell: `tags=["cue"]`
+- phenomenon-to-judgment cell: `tags=["takeaway"]`
+- scene synthesis cell: `tags=["interlude"]`
 - teacher note cell: `tags=["script", "teacher-only"]`
 - main demo cell: `tags=["stage"]`
 - optional appendix cell: `tags=["backup"]`
 
 ## Structure Rule
-A notebook section should usually follow this pattern:
+The default teaching rhythm inside each scene should follow this pattern:
 
 ```text
-cue -> stage -> explain -> checkpoint
+cue → stage → explain → takeaway → (checkpoint)
 ```
 
-Not every section must include all four, but this is the default teaching rhythm.
+Not every scene must include all five, but `takeaway` should rarely be omitted.
+
+Across scenes, the notebook should be woven by interludes that explicitly:
+- restate the core thread;
+- connect the dots;
+- prepare the semantic shift to the next section.
 
 ## Content Density Rule
 - 每个 markdown cell 只承载一个主要功能；
@@ -191,6 +226,57 @@ Not every section must include all four, but this is the default teaching rhythm
 - 每个 explain cell 尽量控制在 3~6 行；
 - 每个 stage cell 尽量只产生一个主要图或一个主要表；
 - 如果代码太长，应拆分为“setup cell + stage cell”。
+
+## Cue Writing Rule
+Cues should not be "terminology questions" that only make sense after you already understand the concept.
+
+A good cue must provide enough situational context that a student can form a prediction before seeing code.
+
+Patterns to use:
+- **Business scenario**: "假设你是一家超市的数据负责人，老板给你三个模型..."
+- **Concrete analogy**: "同一个考试大纲，但每次给你不同的练习题，好学生应该每次考出接近的分数..."
+- **Economic stakes**: "如果今天必须选一个上线，选错了会怎样？"
+- **Visual prediction**: "不看后面的图，你觉得训练误差会怎么走？"
+
+Avoid:
+- Cues that are answerable only by students who already know the concept ("> 谁像欠拟合？谁像过拟合？" — too flat)
+- Cues that are too broad or open-ended without a concrete anchor
+
+## Explain vs Takeaway Rule
+These two cell types must NOT be confused.
+
+### `explain` responsibilities:
+- Name the phenomenon: "This is why we call it high variance."
+- Connect to the immediate output: "The left panel is tighter because..."
+- Be short (3–6 lines).
+
+### `takeaway` responsibilities:
+- Elevate to judgment: "So what does this mean for model selection?"
+- Make it transferable: "In any problem where training samples are limited and noisy..."
+- Connect to risk, decision-making, or real-world stakes.
+- Often starts with: "This means..."、"The real danger here is..."、"So the choice is not about..."
+
+A scene that ends only at `explain` feels unfinished.
+A scene that includes `takeaway` makes students feel they learned something they can use.
+
+## Narrative Arc Design Rule
+A classroom notebook is not a flat list of demos.
+It is a deliberately designed cognitive journey.
+
+A 90-minute session should have roughly:
+- 5–7 scenes;
+- 1–2 interludes;
+- a clear prologue that sets stakes;
+- a clear synthesis before transitioning to the next week.
+
+The high-level narrative arc should follow:
+
+```text
+prologue (stakes) → scenes (tension → reveal → judgment) → interlude (anchor) → scenes → interlude (final synthesis) → next-week transition
+```
+
+"More scenes" does not mean "more code."
+It means more distinct cognitive beats—each scene should produce one main observation that feeds into one takeaway.
 
 ## Plotting Rule
 For classroom plots:
@@ -233,14 +319,24 @@ Recommended high-level structure:
 
 ```text
 00_meta
-01_opening_question
-02_core_demo_a
-03_core_demo_b
-04_metric_or_model_comparison
-05_discussion_checkpoints
-06_summary
+00_prologue (stakes, business scenario, why this week exists)
+01_scene_1 (tension → reveal → takeaway)
+02_scene_2
+03_scene_3
+04_interlude_1 (cognitive anchor: connect first half of class)
+05_scene_4
+06_scene_5
+07_scene_6
+08_interlude_2 (final synthesis: collect all judgments)
+09_transition (natural question → next week)
 99_backup
 ```
+
+The exact number of scenes can vary by week content, but the arc should always include:
+- a prologue;
+- at least one interlude;
+- a final synthesis that collects all takeaways;
+- a transition that makes the next week's topic feel like a natural answer to an open question.
 
 ## Commands
 ### Create/update notebook from source
@@ -264,16 +360,12 @@ uv run --directory slides jupyter nbconvert --to notebook --execute --inplace we
 Before finishing notebook generation, an agent should verify:
 1. Is the `.py` file present and readable as the source of truth?
 2. Does the notebook use the required cell tags?
-3. Is the narrative structured around `cue -> stage -> explain -> checkpoint`?
-4. Are teacher-only notes separated from student-visible explanation?
-5. Does the notebook run top-to-bottom without external hidden state?
-6. Has the `.ipynb` been synced from the `.py` source?
-7. Are plots/tables legible enough for classroom projection?
-
-## Week 12 Specific Guidance
-For `bias-variance tradeoff` notebooks, the preferred dramatic sequence is:
-- ask students to predict what happens as model complexity increases;
-- show underfitting vs overfitting on the same synthetic data;
-- repeat sampling to show variance;
-- inject outliers to compare `RMSE` and `MAE`;
-- end with judgment/discussion prompts, not long prose.
+3. Is the narrative structured around `cue → stage → explain → takeaway → (checkpoint)`?
+4. Does every major scene include a `takeaway` cell that elevates from phenomenon to judgment?
+5. Are interludes placed at key transitions, not skipped?
+6. Are cues written with situational context, not just terminology?
+7. Are teacher-only notes separated from student-visible explanation?
+8. Does the notebook run top-to-bottom without external hidden state?
+9. Has the `.ipynb` been synced from the `.py` source?
+10. Are plots/tables legible enough for classroom projection?
+11. Does the notebook end with a transition question that makes the next week feel like a natural continuation?

@@ -1,9 +1,9 @@
 """模块: utils.transformers
-用途: 数据预处理转换器 —— CustomStandardScaler。
+用途: 数据预处理转换器 —— CustomStandardScaler、CustomSimpleImputer。
 
 遵循 Transformer 接口规范:
-    fit(X)         — 学习参数（均值、标准差），返回 self
-    transform(X)   — 用学到的参数对 X 进行标准化
+    fit(X)         — 学习参数，返回 self
+    transform(X)   — 用学到的参数对 X 进行变换
     fit_transform(X) — fit + transform 一步完成
 """
 import numpy as np
@@ -64,4 +64,44 @@ class CustomStandardScaler:
         返回:
             标准化后的特征矩阵。
         """
+        return self.fit(X).transform(X)
+
+
+class CustomSimpleImputer:
+    """手写缺失值填充器 (SimpleImputer)。
+
+    用每列的统计量（均值或中位数）填充 NaN。
+
+    使用场景:
+        在交叉验证中，必须仅用训练集的统计量来 fit，
+        然后用同样的参数去 transform 验证集，防止数据泄漏。
+    """
+
+    def __init__(self, strategy: str = "mean"):
+        """参数:
+            strategy: 填充策略，"mean"（均值）或 "median"（中位数）。
+        """
+        self.strategy = strategy
+        self.fill_values_ = None  # 每列的填充值（fit 后才有值）
+
+    def fit(self, X: np.ndarray) -> "CustomSimpleImputer":
+        """计算每列的填充值（均值或中位数），仅使用非 NaN 的样本。"""
+        if self.strategy == "mean":
+            self.fill_values_ = np.nanmean(X, axis=0)
+        elif self.strategy == "median":
+            self.fill_values_ = np.nanmedian(X, axis=0)
+        else:
+            raise ValueError("strategy must be 'mean' or 'median'")
+        return self
+
+    def transform(self, X: np.ndarray) -> np.ndarray:
+        """用 fit 阶段学到的填充值替换 NaN。"""
+        X_filled = X.copy()
+        for j in range(X.shape[1]):
+            mask = np.isnan(X_filled[:, j])
+            X_filled[mask, j] = self.fill_values_[j]
+        return X_filled
+
+    def fit_transform(self, X: np.ndarray) -> np.ndarray:
+        """先 fit 再 transform，一步完成。"""
         return self.fit(X).transform(X)

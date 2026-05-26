@@ -32,7 +32,11 @@ class AnalyticalOLS:
         # 正规方程
         XtX = X.T @ X
         Xty = X.T @ y
-        self.coef_ = np.linalg.solve(XtX, Xty)
+        try:
+            self.coef_ = np.linalg.solve(XtX, Xty)
+        except np.linalg.LinAlgError:
+            # 矩阵奇异时使用伪逆
+            self.coef_ = np.linalg.pinv(XtX) @ Xty
 
         # 残差与自由度
         y_pred = X @ self.coef_
@@ -42,7 +46,10 @@ class AnalyticalOLS:
         self.sigma2_ = sse / self.df_resid_
 
         # 协方差矩阵
-        XtX_inv = np.linalg.inv(XtX)
+        try:
+            XtX_inv = np.linalg.inv(XtX)
+        except np.linalg.LinAlgError:
+            XtX_inv = np.linalg.pinv(XtX)
         self.cov_matrix_ = self.sigma2_ * XtX_inv
         return self
 

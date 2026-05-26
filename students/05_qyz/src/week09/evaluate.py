@@ -33,18 +33,30 @@ def main():
     df = df.replace({True: 1, False: 0})
     df = df.astype(float)
     print(f"[OK] 已加载清洁数据，形状: {df.shape}")
+    print(f"列名: {df.columns.tolist()}")
 
     # 分离特征和目标变量
-    feature_cols = df.columns[:-1].tolist()
+    # 假设最后一列是目标变量 Sales
+    target_col = 'Sales'
+    
+    if target_col not in df.columns:
+        # 如果找不到 Sales 列，则取最后一列
+        target_col = df.columns[-1]
+    
+    feature_cols = [col for col in df.columns if col != target_col]
     X = df[feature_cols].values
-    y = df.iloc[:, -1].values
+    y = df[target_col].values
+    
+    print(f"目标变量: {target_col}")
+    print(f"特征变量 ({len(feature_cols)}个): {feature_cols}")
 
-    # 多重共线性诊断
+    # 多重共线性诊断（只对特征计算 VIF，不包含目标变量）
     print("\n" + "=" * 60)
     print("第一阶段：多重共线性诊断（VIF）")
     print("=" * 60)
 
-    vif_df = calculate_vif_dataframe(df, feature_cols)
+    # 关键修复：只传入特征列，不包含目标变量
+    vif_df = calculate_vif_dataframe(df[feature_cols], feature_cols)
     print_vif_warning(vif_df)
 
     print("\n[INFO] VIF 解释:")

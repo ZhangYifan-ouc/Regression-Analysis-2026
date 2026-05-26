@@ -1,14 +1,16 @@
-#!/usr/bin/env python3
 """
 模型诊断工具箱 (Model Diagnostics Toolbox)
 功能：
 1. 计算 VIF（方差膨胀因子）检测多重共线性
 2. 彩色终端输出警告
+3. 残差图、QQ图、相关矩阵热力图
 """
 
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from utils.models import AnalyticalOLS
+from pathlib import Path
 
 
 def calculate_vif(X: np.ndarray) -> list:
@@ -99,21 +101,74 @@ def print_vif_warning(vif_results: pd.DataFrame, threshold: float = 10):
         vif = row['VIF']
         
         if vif > threshold:
-            print(f"\033[91m⚠️  {feature}: VIF = {vif:.2f} (严重共线性！)\033[0m")
+            print(f"\033[91m  {feature}: VIF = {vif:.2f} (严重共线性！)\033[0m")
             has_severe = True
         elif vif > 5:
-            print(f"\033[93m⚡ {feature}: VIF = {vif:.2f} (中度共线性)\033[0m")
+            print(f"\033[93m {feature}: VIF = {vif:.2f} (中度共线性)\033[0m")
         else:
             print(f"   {feature}: VIF = {vif:.2f}")
     
     if has_severe:
         print("\n" + "="*60)
-        print("\033[91m🚨 警告！以下特征引发严重多重共线性:\033[0m")
+        print("\033[91m 警告！以下特征引发严重多重共线性:\033[0m")
         severe_features = vif_results[vif_results['VIF'] > threshold]['特征'].tolist()
         print(f"\033[91m   {severe_features}\033[0m")
         print("\033[91m   建议: 考虑删除高度相关的特征或使用正则化方法\033[0m")
         print("="*60)
     else:
-        print("\n✅ 未检测到严重多重共线性")
+        print("\n未检测到严重多重共线性")
     
     return has_severe
+
+
+# ----------------------------------------------------------------
+# 以下是新增的 3 个诊断函数
+# ----------------------------------------------------------------
+
+def plot_residuals(y_true, y_pred, save_name="residuals.png"):
+    """绘制残差图：残差 vs 预测值"""
+    res = y_true - y_pred
+    plt.figure(figsize=(10, 5))
+    plt.scatter(y_pred, res, alpha=0.5)
+    plt.axhline(y=0, color='red', linestyle='--')
+    plt.xlabel("Predicted values")
+    plt.ylabel("Residuals")
+    plt.title("Residuals vs Predicted Values")
+    
+    res_dir = Path(__file__).parent.parent / "src" / "week11" / "results"
+    res_dir.mkdir(exist_ok=True)
+    plt.savefig(res_dir / save_name, dpi=150)
+    plt.close()
+
+
+def plot_qq_residuals(y_true, y_pred, save_name="qq_plot.png"):
+    """绘制残差正态 Q-Q 图"""
+    import scipy.stats as stats
+    res = y_true - y_pred
+    plt.figure(figsize=(8, 8))
+    stats.probplot(res, plot=plt)
+    plt.title("Residual Q-Q Plot")
+    
+    res_dir = Path(__file__).parent.parent / "src" / "week11" / "results"
+    res_dir.mkdir(exist_ok=True)
+    plt.savefig(res_dir / save_name, dpi=150)
+    plt.close()
+
+
+def plot_correlation_matrix(df, save_name="corr_matrix.png"):
+    """绘制特征相关矩阵热力图"""
+    df_numeric = df.select_dtypes(include=[np.number])
+    corr = df_numeric.corr()
+    
+    plt.figure(figsize=(12, 10))
+    plt.imshow(corr, cmap="coolwarm", vmin=-1, vmax=1)
+    plt.colorbar()
+    plt.xticks(range(len(corr.columns)), corr.columns, rotation=90)
+    plt.yticks(range(len(corr.columns)), corr.columns)
+    plt.title("Feature Correlation Matrix")
+    plt.tight_layout()
+    
+    res_dir = Path(__file__).parent.parent / "src" / "week11" / "results"
+    res_dir.mkdir(exist_ok=True)
+    plt.savefig(res_dir / save_name, dpi=150)
+    plt.close()

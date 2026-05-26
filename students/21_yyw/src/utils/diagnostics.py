@@ -133,10 +133,96 @@ def calculate_vif_dataframe(df: pd.DataFrame, feature_cols: list) -> pd.DataFram
     """
     X = df[feature_cols].values
     vif_values = calculate_vif(X)
-    
+
     vif_df = pd.DataFrame({
         '特征': feature_cols,
         'VIF': vif_values
     }).sort_values('VIF', ascending=False)
-    
+
     return vif_df
+
+
+def diagnose_vif_from_dataframe(df: pd.DataFrame, target_col: str,
+                                cat_cols: list,
+                                preprocess_fn=None) -> tuple:
+    """
+    从 DataFrame 出发，完成预处理后计算 VIF。
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        包含目标列的完整数据
+    target_col : str
+        目标变量列名（会被排除）
+    cat_cols : list
+        类别特征列名列表（用于 One-Hot 编码）
+    preprocess_fn : callable, optional
+        预处理函数，签名同 transformers.py 中的 preprocess_features。
+        如果提供，调用 preprocess_fn(df, target_col, cat_cols, fit_mode=True)
+        返回 (X, y, feature_names, stats_dict)，其中 X 为标准化后的数据。
+        如果不提供，使用内置的简单预处理（仅填补+编码，不做标准化）。
+
+    Returns
+    -------
+    (feature_names, vif_values) : tuple
+        特征名称列表和对应的 VIF 值列表
+    """
+    if preprocess_fn is not None:
+        # 使用外部预处理函数（但不做标准化，VIF 是尺度无关的）
+        # 调用方需传入一个只做填补+编码的版本
+        X, _, feature_names, _ = preprocess_fn(
+            df, target_col, cat_cols, fit_mode=True)
+    else:
+        # 内置简单预处理
+        df = df.copy()
+        if target_col in df.columns:
+            df = df.drop(columns=[target_col])
+
+        # 布尔/整数列转 float
+        bool_cols = df.select_dtypes(include=['bool']).columns
+        if len(bool_cols) > 0:
+            df[bool_cols] = df[bool_cols].astype(float)
+        int_cols = df.select_dtypes(include=['int']).columns
+        if len(int_cols) > 0:
+            df[int_cols] = df[int_cols].astype(float)
+
+        # 缺失值填补
+        num_cols = [c for c in df.columns if c not in cat_cols]
+        for c in num_cols:
+            if df[c].isnull().any():
+                df[c] = df[c].fillna(df[c].median())
+        for c in cat_cols:
+            if df[c].isnull().any():
+                mode_val = df[c].mode()[0] if not df[c].mode().empty else 'unknown'
+                df[c] = df[c].fillna(mode_val)
+
+        # One-Hot 编码
+        if cat_cols:
+            df = pd.get_dummies(df, columns=cat_cols, drop_first=True, dtype=float)
+
+        feature_names = list(df.columns)
+        X = df.values.astype(np.float64)
+
+    vif_values = calculate_vif(X)
+    return feature_names, vif_values
+
+
+def compute_vif_on_fold(df: pd.DataFrame, target_col: str, cat_cols: list) -> tuple:
+    """
+    在全量数据上做预处理后计算 VIF（用于诊断，不用于模型评估）。
+    与 diagnose_vif_from_dataframe 相同，提供更直观的函数名。
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        包含目标列的完整数据
+    target_col : str
+        目标变量列名
+    cat_cols : list
+        类别特征列名列表
+
+    Returns
+    -------
+    (feature_names, vif_values) : tuple
+    """
+    return diagnose_vif_from_dataframe(df, target_col, cat_cols)

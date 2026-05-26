@@ -17,15 +17,16 @@ class CustomOLS:
     def fit(self, X, y):
         if self.fit_intercept:
             X = np.column_stack([np.ones(X.shape[0]), X])
-        
+
         try:
             self.coef_ = np.linalg.solve(X.T @ X, X.T @ y)
-            if self.fit_intercept:
-                self.intercept_ = self.coef_[0]
-                self.coef_ = self.coef_[1:]
         except np.linalg.LinAlgError:
             self.coef_ = np.linalg.lstsq(X.T @ X, X.T @ y, rcond=None)[0]
-        
+
+        if self.fit_intercept:
+            self.intercept_ = self.coef_[0]
+            self.coef_ = self.coef_[1:]
+
         return self
     
     def predict(self, X):

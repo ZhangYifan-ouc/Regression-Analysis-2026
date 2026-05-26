@@ -42,45 +42,62 @@ def main():
     df = pd.read_csv(args.input)
     print(f"✓ 已加载数据，形状: {df.shape}")
 
-    # ========== 第三步：识别列类型 ==========
-    # 识别分类列（object 类型）和数值列（numeric 类型）
-    categorical_cols = df.select_dtypes(include=["object"]).columns.tolist()
-    numerical_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+    # ========== 第三步：分离目标变量 ==========
+    # 假设目标变量是 'Sales'
+    target_col = 'Sales'
+    
+    if target_col not in df.columns:
+        print(f"错误：找不到目标列 '{target_col}'")
+        print(f"可用列: {df.columns.tolist()}")
+        sys.exit(1)
+    
+    # 分离特征和目标
+    y = df[target_col]  # 目标变量（最后一列）
+    X = df.drop(columns=[target_col])  # 特征矩阵
+    
+    print(f"  - 目标变量: {target_col}")
+    print(f"  - 特征列: {X.columns.tolist()}")
 
-    print(f"  - 分类列: {categorical_cols}")
-    print(f"  - 数值列: {numerical_cols}")
+    # ========== 第四步：识别特征列类型 ==========
+    categorical_cols = X.select_dtypes(include=["object"]).columns.tolist()
+    numerical_cols = X.select_dtypes(include=[np.number]).columns.tolist()
 
-    # ========== 第四步：One-Hot 编码（处理分类变量） ==========
+    print(f"  - 分类特征列: {categorical_cols}")
+    print(f"  - 数值特征列: {numerical_cols}")
+
+    # ========== 第五步：One-Hot 编码（处理分类变量） ==========
     # 防雷：必须使用 drop_first=True 来丢弃第一列分类
-    # 原因：如果 k 个分类有 k 列虚拟变量，会导致完全多重共线性，X'X 不可逆
     if categorical_cols:
-        df = pd.get_dummies(df, columns=categorical_cols, drop_first=True)
-        print(f"✓ 已进行 One-Hot 编码（drop_first=True），新形状: {df.shape}")
+        X = pd.get_dummies(X, columns=categorical_cols, drop_first=True)
+        print(f"✓ 已进行 One-Hot 编码（drop_first=True），特征形状: {X.shape}")
 
-    # ========== 第五步：Winsorization（缩尾处理异常值） ==========
-    # 将超过 99 分位数的极端值限制在 99 分位数的水平
-    # 作用：防止异常值对回归系数的过度影响
+    # ========== 第六步：Winsorization（缩尾处理异常值） ==========
     for col in numerical_cols:
-        if col in df.columns:  # 列可能在 One-Hot 后被移除
-            percentile_99 = df[col].quantile(0.99)
-            count_before = (df[col] > percentile_99).sum()
-            df[col] = np.where(df[col] > percentile_99, percentile_99, df[col])
+        if col in X.columns:
+            percentile_99 = X[col].quantile(0.99)
+            count_before = (X[col] > percentile_99).sum()
+            X[col] = np.where(X[col] > percentile_99, percentile_99, X[col])
             if count_before > 0:
-                print(
-                    f"  - {col}: 缩尾处理 {count_before} 个异常值到 {percentile_99:.2f}"
-                )
+                print(f"  - {col}: 缩尾处理 {count_before} 个异常值到 {percentile_99:.2f}")
 
-    # ========== 第六步：填补缺失值 ==========
-    # 使用列级均值进行填充（本周临时方案，下周会改进）
-    # 注意：这会导致数据泄露，因为我们用全局均值填补缺失值
-    initial_na_count = df.isna().sum().sum()
-    df = df.fillna(df.mean())
-    print(f"✓ 已填补缺失值: {initial_na_count} 个 NaN 值已用列均值替换")
+    # ========== 第七步：填补缺失值 ==========
+    # 只对特征填补缺失值
+    initial_na_count = X.isna().sum().sum()
+    X = X.fillna(X.mean())
+    print(f"✓ 已填补特征缺失值: {initial_na_count} 个 NaN 值已用列均值替换")
 
-    # ========== 第七步：保存清洁数据 ==========
-    df.to_csv(args.output, index=False)
+    # ========== 第八步：合并特征和目标 ==========
+    # 确保目标变量在最后一列
+    df_clean = X.copy()
+    df_clean[target_col] = y
+    
+    print(f"✓ 清洁数据最终形状: {df_clean.shape}")
+    print(f"  - 特征列: {df_clean.columns[:-1].tolist()}")
+    print(f"  - 目标列: {df_clean.columns[-1]} (最后一列)")
+
+    # ========== 第九步：保存清洁数据 ==========
+    df_clean.to_csv(args.output, index=False)
     print(f"✓ 清洁数据已保存到: {args.output}")
-    print(f"  最终形状: {df.shape}")
 
 
 if __name__ == "__main__":
