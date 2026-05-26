@@ -1,21 +1,36 @@
-# 虚拟环境
-.venv/
-venv/
-ENV/
+# macOS specific files
+.DS_Store
 
-# 结果/输出
-results/
-outputs/
+# Common file types to ignore
+*.pdf
 
-# Python 缓存
+# Python virtual environment folders
+**/.venv/
+**/venv/
+**/env/
+**/.env/
+
+# Python caches and runtime files
+**/__pycache__/
+
+# Jupyter Notebook checkpoints folder
+**/.ipynb_checkpoints/
+
+# uv lock file
+**/uv.lock
+
+# Jupyter Notebook files (recursive)
+**/*.ipynb
+
+**/*.npz
+
+# Python 缓存文件
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 
-# IDE
-.idea/
+# VS Code 设置（可选）
 .vscode/
-
-# 数据文件（如果需要）
 *.csv
-*.png
-*.jpg
+students/*/data/*.csv
